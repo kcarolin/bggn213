@@ -1,0 +1,110 @@
+---
+title: "Class 9 PCA and Clustering Project"
+author: "Krypton Carolino"
+date: "2/8/2019"
+output: html_document
+---
+
+```{r}
+fna.data <- "WisconsinCancer.csv"
+wisc.df <- read.csv(fna.data)
+head(wisc.df)
+```
+
+
+```{r}
+# Last column X needs to be removed, check how many patients and features in data
+
+nrow(wisc.df) # patients
+ncol(wisc.df) # features
+```
+
+
+```{r}
+wisc.data <- wisc.df[,3:32] #remove first two and last column
+rownames(wisc.data) <- wisc.df$id # rename rows to IDs
+head(wisc.data)
+```
+
+
+```{r}
+# how many cancer/non-cancer samples
+table(wisc.df$diagnosis)
+```
+
+
+```{r}
+# how many mean features
+colnames(wisc.data)
+inds <- (grep("_mean", colnames(wisc.data)))
+colnames(wisc.data[inds])
+```
+
+
+```{r}
+round(colMeans(wisc.data), 2)
+```
+
+
+```{r}
+round(apply(wisc.data,2,sd), 2)
+```
+
+
+```{r}
+wisc.pr <- prcomp(wisc.data, scale = T) # scale to true cuz needed
+summary(wisc.pr)
+```
+
+```{r}
+biplot(wisc.pr)
+```
+
+
+```{r}
+# make own PCA plot
+plot(wisc.pr$x[,1], wisc.pr$x[,2], col = wisc.df$diagnosis)
+```
+
+```{r}
+pr.var <- wisc.pr$sdev**2
+
+pve <- round(pr.var/sum(pr.var) * 100, 4)
+
+```
+
+```{r}
+plot(pve, type = "o")
+```
+
+```{r}
+barplot(pve, axes = F, names.arg = paste0("PC", 1:length(pve)), las=2, ylab = "Proportion of Variance (%)")
+axis(2,round(pve))
+```
+
+```{r}
+d <- dist(wisc.pr$x[,1:2])
+hc <- hclust(d, method = "ward.D2")
+grp3 <- cutree(hc, k=3)
+grp3
+table(grp3)
+```
+
+
+```{r}
+plot(wisc.pr$x[,1], wisc.pr$x[,2], col=grp3)
+diagnosis <- wisc.df$diagnosis == "M"
+table(grp3, diagnosis)
+```
+
+
+```{r}
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+plot(wisc.pr$x[,1:2], col=wisc.df$diagnosis)
+points(npc[,1], npc[,2], col=c("green", "blue"), pch=15, cex = 3)
+```
+
+
+
