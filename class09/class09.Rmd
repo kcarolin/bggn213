@@ -2,7 +2,7 @@
 title: "Class 9 PCA and Clustering Project"
 author: "Krypton Carolino"
 date: "2/8/2019"
-output: html_document
+output: github_document
 ---
 
 ```{r}
