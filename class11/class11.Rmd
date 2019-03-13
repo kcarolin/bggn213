@@ -1,0 +1,54 @@
+---
+title: "Untitled"
+output: github_document
+---
+
+
+```{r}
+data <- read.csv("/Users/KICAROLINO/Desktop/BGGN213/bggn213/data_summary.csv")
+data
+```
+
+```{r}
+data$Total[3] + data$Total[3]
+sum(data$Total)
+```
+
+```{r}
+q1a <- (data$Total[1] + data$Total[3]) / sum(data$Total) *100
+q1a
+# names(pre.by.method) <- rownames(data)
+```
+
+```{r}
+q1b <- sum(data$Proteins) / sum(data$Total) *100
+q1b
+```
+
+
+```{r}
+#pdb <- read.pdb("1hsg")
+
+pdb
+```
+
+```{r}
+library("bio3d.view")
+
+view(pdb, "overview", col="sse")
+```
+
+```{r}
+ca.inds<- atom.select(pdb, "calpha")
+ca.inds
+```
+
+```{r}
+ligand.pdb <- trim.pdb(pdb, inds)
+```
+
+
+
+
+
+

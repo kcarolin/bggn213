@@ -1,0 +1,53 @@
+---
+title: "Untitled"
+author: "Krypton Carolino"
+date: "3/8/2019"
+output: html_document
+---
+
+```{r}
+library(bio3d)
+```
+
+```{r}
+seqs <- read.fasta("~/Desktop/lecture18_sequences.fa")
+```
+
+```{r}
+ide <- conserv(seqs$ali, method="identity")
+#ide
+mutant.sites <- which(ide < 1)
+#mutant.sites
+gaps <- gap.inspect(seqs)
+#gaps
+mutant.sites <- mutant.sites[mutant.sites %in% gaps$f.inds]
+mutant.sites
+```
+
+```{r}
+mutant.names <- paste0(seqs$ali["P53_wt",mutant.sites],
+                       mutant.sites,
+                       seqs$ali["P53_mutant",mutant.sites])
+mutant.names
+```
+
+```{r}
+start.position <- mutant.sites - 8
+end.position <-  mutant.sites + 8
+```
+
+```{r}
+store.seqs <- matrix("-", nrow=length(mutant.sites), ncol=17)
+rownames(store.seqs) <- mutant.names
+```
+
+```{r}
+for(i in 1:length(mutant.sites)) {
+  store.seqs[i,] <- seqs$ali["P53_mutant",start.position[i]:end.position[i]]
+  }
+```
+
+```{r}
+store.seqs
+```
+

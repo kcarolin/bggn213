@@ -42,4 +42,28 @@ ori <- read.pdb("1hsg_ligand.pdbqt")
 rmsd(ori, res)
 ```
 
+```{r}
+atom.select()
+```
+
+
+
+
+
+
+
+
+```{r}
+library(bio3d)
+pdb <- read.pdb("1HEL")
+modes <- nma(pdb)
+plot(modes, sse=pdb)
+```
+
+```{r}
+mktrj(modes, mode=7, file="nma_7.pdb")
+```
+
+
+
 

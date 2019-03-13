@@ -1,0 +1,152 @@
+---
+title: "Class 14"
+output: github_document
+---
+
+##This is the hands on session information for lecture 14. Genome informatics part II
+
+Goal is the RNA quantification and transcript discovery in some cases and variant identification with the RNA seq experiments.
+RPKM is the normalized read counts. After the reads the first step was to check the quality and then we used the reference genome to map our sequences and then read the counting using cufflinks. Now we have a big table of gene numbers and now we want to do the differential expression analysis. 
+
+First we installed the DESeq2 package for which we setup the bioconductor. 
+
+```{r}
+library(BiocInstaller)
+library(DESeq2)
+```
+The background for today's data is to identify the mechanism by which certain drugs act to treat ashthma. 
+
+Each cell of the count matrix indicates the read associated with the particular gene (the row)
+
+The data needs countdata and a metadata which is meta data which tells the package which columns correspond to what conditions. First column of colData must match the column names of the CountData.
+
+##Hands on session
+```{r}
+#Importing the data, we are installing the input files in the data folder just to have everything organized
+counts <- read.csv("airway_scaledcounts.csv", stringsAsFactors = FALSE)
+metadata <- read.csv("airway_metadata.csv", stringsAsFactors = FALSE) # The strings as Factors argument and changing it to false made the column content as character vector rather than the factors. Because factors will have different levels and I think the gene names are not really levels they can be anything. Hence, I guess we used changed the argument to false. 
+head(counts)
+nrow(counts) # to see how many genes we are dealing with. 
+```
+Check if the first column of the metadata is equal to the column names of the counts. 
+```{r}
+metadata$id==colnames(counts[-1]) # Note that we are getting rid of the first column name because it contains the gene names. 
+all (metadata$id==colnames(counts[-1])) # This function will give true if everything in the comparing vectors are true. Otherwise it is going to give false. 
+```
+
+##Section 3 Toy differential gene expression. 
+Note that each column in the counts data is an experiment and each row is the gene. 
+With this set of code we are trying to calculate the mean expresssion for each gene in control and treated conditions. 
+```{r}
+#Extracting which experiments are control. 
+control_id <- metadata$id[which(metadata$dex=="control")]
+control_id
+#Now using these id we are going to calculate the mean of the gene expression.
+control <- counts[,control_id]
+rownames(control) <- counts$ensgene # Restoring the gene name. 
+control_mean <- rowSums(counts[,control_id])/length(control_id)
+
+#Now we are extracting the treated samples and then calculating the mean. 
+treated_id <- metadata$id[which(metadata$dex=="treated")]
+treated <- counts[,treated_id] # This is the important step. Getting the columns in from the count matrix as per the treated id. 
+rownames(treated) <- counts$ensgene
+head(treated)
+treated_mean <- rowSums(treated)/length(treated_id)# Instead can use the rowMeans function too. 
+names(treated_mean) <- counts$ensgene #Restoring the gene names. 
+names(control_mean) <- counts$ensgene #Restoring the gene names. 
+meancount <- data.frame(control_mean, treated_mean) # combining the mean of both the control and treated experiments for each gene in a dataframe. 
+colSums(meancount)
+```
+
+Plot the data
+```{r}
+plot(meancount) # The data is pretty much clumped on each other. Hence, we are going to use the log scale.
+plot.default(meancount$control_mean, meancount$treated_mean, log = "xy")
+```
+
+We are now going to calculate the log 2 fold change for each and every gene and then add it to our data. 
+```{r}
+meancount$log2fc <- log2(meancount[,"treated_mean"]/meancount[,"control_mean"])
+head(meancount)
+#Note that there are weird values like - inf and Nan. So, we should try to remove these values. 
+
+```
+
+We need to remove genes that are zero values in any of the columns. 
+```{r}
+which(meancount[,1:2]==0, arr.ind = TRUE) #We are doing the arr.ind== TRUE because while using the which function, it will first run through the first column and then a second column which is going to mess up with the results. Now we have used the arr.ind == TRUE, we can select for the rows that have zero 
+rows_to_remove <- unique(which(meancount[,1:2]==0, arr.ind = TRUE)[,1]) #The unique command will not repeat the results where both the treated as well as the control are zero. 
+rows_to_remove
+mycounts <- meancount[-rows_to_remove,] # Remove the rows where either control or treated is zero. 
+head(mycounts)
+
+```
+
+
+Filter the data more to get just the highly upregulated and downregulated. We are using 2 as the absolute threshold. 
+```{r}
+up.ind <- mycounts$log2fc >2
+down.ind <- mycounts$log2fc < (-2)
+sum(up.ind)
+sum(down.ind)
+```
+
+##Section4 
+This is about annotating the genes. 
+```{r}
+anno <- read.csv("annotables_grch38.csv")
+head(anno)
+#Now we would like to merge the information about the gene. 
+mycounts.anno <- merge(mycounts, anno, by.x= "row.names", by.y= "ensgene") # Arguing to match the row names of the mycounts with the column name of the anno. 
+head(mycounts.anno)
+```
+
+WE can do this by using the bioconductor's annotation package too
+```{r, eval= FALSE}
+#source("http://bioconductor.org/biocLite.R")
+#biocLite()
+#biocLite("AnnotationDbi")
+#biocLite("org.Hs.eg.db")
+```
+
+```{r}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+columns(org.Hs.eg.db)
+```
+
+Add information to the mycount dataframe using the second method. 
+```{r}
+mycounts$symbol <- mapIds(org.Hs.eg.db,keys=row.names(mycounts), column="SYMBOL", keytype="ENSEMBL", multiVals="first") #Multivals = first will give just the first answer in case of multiple values. This can happen if my gene is encoding more than one protein. 
+head(mycounts)
+```
+ 
+ Do the question 8. We are going to proceed to use the pipeline and do this in a proper way.  
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts, colData=metadata,design=~dex,  tidy=TRUE) # The design data is to compare which values. 
+dds 
+```
+ Running the main function
+```{r}
+dds <- DESeq(dds)
+```
+ Getting the results
+```{r}
+res <- results(dds)
+res
+summary(res, alpha =0.01) #alpha is the threshold of the p-value. 0.1 is the default value
+```
+
+Ploting stuff. We want both. The log2 fold change and the significance. 
+```{r}
+plot(res$log2FoldChange, -log(res$padj))
+```
+Making the plot prettier. 
+```{r}
+mycols <- rep("gray", nrow(res))
+mycols[abs(res$log2FoldChange)>2]="red"
+mycols[res$padj <0.01 & abs(res$log2FoldChange)>2]= "blue"
+plot(res$log2FoldChange, -log(res$padj), col=mycols)
+
+```
+
